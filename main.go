@@ -24,7 +24,7 @@ const (
 )
 
 func main() {
-	var state PlayState = StateStopped
+	var state = StateStopped
 
 	ampDev, err := os.OpenFile(DefaultAmpControlDev, os.O_WRONLY, 0644)
 	if err != nil {
