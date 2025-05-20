@@ -8,23 +8,24 @@ import (
 )
 
 type PlayEvent int
+type PlayState int
 type PlayChannel chan PlayEvent
 
 const (
 	DefaultAmpControlDev = "/dev/ampcontrol"
 	DefaultALSAStatusDev = "/proc/asound/card1/pcm0p/sub0/status"
-	DefaultTickMs        = 300
+	DefaultTickMs        = 333
 
 	EventPlaying PlayEvent = iota
 	EventClosed
 
-	StateStopped = iota
+	StateStopped PlayState = iota
 	StatePlaying
 )
 
-var state int = StateStopped
-
 func main() {
+	var state PlayState = StateStopped
+
 	ampDev, err := os.OpenFile(DefaultAmpControlDev, os.O_WRONLY, 0644)
 	if err != nil {
 		log.Fatal("Failed to open AMP control device: ", err)
@@ -49,9 +50,9 @@ func main() {
 		case event := <-evch:
 			switch event {
 			case EventPlaying:
-				startAmp(ampDev)
+				state = startAmp(state, ampDev)
 			case EventClosed:
-				stopAmp(ampDev)
+				state = stopAmp(state, ampDev)
 			}
 		}
 	}
@@ -70,34 +71,34 @@ func readPlayState(ch PlayChannel) {
 	}
 }
 
-func stopAmp(f *os.File) {
-	if state != StatePlaying {
-		return
+func stopAmp(s PlayState, f *os.File) PlayState {
+	if s != StatePlaying {
+		return s
 	}
 	i, err := f.Write([]byte{'0'})
 	if err != nil {
 		log.Fatal(err)
 	}
 	if i != 1 {
-		log.Println("failed to write 0 to control device")
-		return
+		log.Println("Failed to write 0 to control device")
+		return s
 	}
-	state = StateStopped
-	log.Println("stopped")
+	log.Println("Stopped")
+	return StateStopped
 }
 
-func startAmp(f *os.File) {
-	if state != StateStopped {
-		return
+func startAmp(s PlayState, f *os.File) PlayState {
+	if s != StateStopped {
+		return s
 	}
 	i, err := f.Write([]byte{'1'})
 	if err != nil {
 		log.Fatal(err)
 	}
 	if i != 1 {
-		log.Println("failed to write 1 to control device")
-		return
+		log.Println("Failed to write 1 to control device")
+		return s
 	}
-	state = StatePlaying
-	log.Println("playing")
+	log.Println("Playing")
+	return StatePlaying
 }
