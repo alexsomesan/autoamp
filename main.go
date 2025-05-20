@@ -17,7 +17,12 @@ const (
 
 	EventPlaying PlayEvent = iota
 	EventClosed
+
+	StateStopped = iota
+	StatePlaying
 )
+
+var state int = StateStopped
 
 func main() {
 	ampDev, err := os.OpenFile(DefaultAmpControlDev, os.O_WRONLY, 0644)
@@ -66,25 +71,33 @@ func readPlayState(ch PlayChannel) {
 }
 
 func stopAmp(f *os.File) {
+	if state != StatePlaying {
+		return
+	}
 	i, err := f.Write([]byte{'0'})
 	if err != nil {
 		log.Fatal(err)
 	}
 	if i != 1 {
-		log.Println("failed to write 0 to device")
+		log.Println("failed to write 0 to control device")
 		return
 	}
+	state = StateStopped
 	log.Println("stopped")
 }
 
 func startAmp(f *os.File) {
+	if state != StateStopped {
+		return
+	}
 	i, err := f.Write([]byte{'1'})
 	if err != nil {
 		log.Fatal(err)
 	}
 	if i != 1 {
-		log.Println("failed to write 1 to device")
+		log.Println("failed to write 1 to control device")
 		return
 	}
+	state = StatePlaying
 	log.Println("playing")
 }
