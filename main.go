@@ -4,7 +4,6 @@ import (
 	"log"
 	"os"
 	"strings"
-	"sync"
 	"time"
 )
 
@@ -21,15 +20,16 @@ const (
 )
 
 func main() {
-	var wg sync.WaitGroup
-
 	ampDev, err := os.OpenFile(DefaultAmpControlDev, os.O_WRONLY, 0644)
 	if err != nil {
-		panic(err)
+		log.Fatal("Failed to open AMP control device: ", err)
 	}
 	log.Println("Amp control device opened")
 	defer func() {
-		ampDev.Close()
+		cerr := ampDev.Close()
+		if cerr != nil {
+			log.Fatal("Failed to close AMP control device: ", err)
+		}
 		log.Println("Amp control device closed")
 	}()
 
@@ -50,13 +50,12 @@ func main() {
 			}
 		}
 	}
-	wg.Wait()
 }
 
 func readPlayState(ch PlayChannel) {
 	as, err := os.ReadFile(DefaultALSAStatusDev)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	if strings.Contains(string(as), "closed") {
 		ch <- EventClosed
@@ -69,7 +68,7 @@ func readPlayState(ch PlayChannel) {
 func stopAmp(f *os.File) {
 	i, err := f.Write([]byte{'0'})
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	if i != 1 {
 		log.Println("failed to write 0 to device")
@@ -81,7 +80,7 @@ func stopAmp(f *os.File) {
 func startAmp(f *os.File) {
 	i, err := f.Write([]byte{'1'})
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	if i != 1 {
 		log.Println("failed to write 1 to device")
