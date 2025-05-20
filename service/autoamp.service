@@ -1,0 +1,10 @@
+[Unit]
+Description="Turn amplifier ON or OFF when sound is playing"
+
+[Service]
+Type=simple
+Restart=always
+ExecStart=/usr/local/bin/autoamp
+
+[Install]
+WantedBy=multi-user.target
