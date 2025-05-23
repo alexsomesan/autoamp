@@ -65,7 +65,7 @@ func main() {
 			case EventPlaying:
 				state = startAmp(state, ampDev)
 			case EventClosed:
-				if state == StateClosed {
+				if state != StatePlaying {
 					continue
 				}
 				state = StateClosed
