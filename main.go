@@ -39,9 +39,10 @@ func main() {
 	flag.StringVar(&alsaprocpath, "alsa-proc", DefaultALSAStatus, "/proc path to ALSA status file")
 	flag.Parse()
 
-	offdelay, err := time.ParseDuration(fd)
-	if err != nil {
-		log.Fatalf("Failed to parse delay duration: %q", err)
+	var perr error
+	offdelay, perr = time.ParseDuration(fd)
+	if perr != nil {
+		log.Fatalf("Failed to parse delay duration: %q", perr)
 	}
 
 	ampDev, err := os.OpenFile(ctrldev, os.O_WRONLY, 0644)
