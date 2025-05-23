@@ -33,14 +33,16 @@ var alsaprocpath string
 func main() {
 	var state = StateStopped
 
+	var fd string
+	flag.StringVar(&fd, "off-delay", "0s", "delay duration before turning off")
 	flag.StringVar(&ctrldev, "dev", DefaultAmpControlDev, "device to send amp control commands to")
 	flag.StringVar(&alsaprocpath, "alsa-proc", DefaultALSAStatus, "/proc path to ALSA status file")
-	offdelay, err := time.ParseDuration(*flag.String("off-delay", "0", "delay duration before turning off"))
+	flag.Parse()
+
+	offdelay, err := time.ParseDuration(fd)
 	if err != nil {
 		log.Fatalf("Failed to parse delay duration: %q", err)
 	}
-
-	flag.Parse()
 
 	ampDev, err := os.OpenFile(ctrldev, os.O_WRONLY, 0644)
 	if err != nil {
