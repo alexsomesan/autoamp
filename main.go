@@ -65,6 +65,10 @@ func main() {
 			case EventPlaying:
 				state = startAmp(state, ampDev)
 			case EventClosed:
+				if state == StateClosed {
+					continue
+				}
+				state = StateClosed
 				go func() {
 					log.Printf("Closed. Waiting %d ms...", offdelay)
 					time.Sleep(time.Millisecond * time.Duration(offdelay))
