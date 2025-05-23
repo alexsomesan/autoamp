@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"log"
 	"os"
 	"strings"
@@ -13,20 +14,38 @@ type PlayChannel chan PlayEvent
 
 const (
 	DefaultAmpControlDev = "/dev/ampcontrol"
-	DefaultALSAStatusDev = "/proc/asound/card1/pcm0p/sub0/status"
+	DefaultALSAStatus    = "/proc/asound/card1/pcm0p/sub0/status"
 	DefaultTickMs        = 333
 
-	EventPlaying PlayEvent = iota
+	EventStopped PlayEvent = iota
+	EventPlaying
 	EventClosed
 
 	StateStopped PlayState = iota
 	StatePlaying
+	StateClosed
 )
+
+var offdelay time.Duration
+var ctrldev string
+var alsaprocpath string
 
 func main() {
 	var state = StateStopped
 
-	ampDev, err := os.OpenFile(DefaultAmpControlDev, os.O_WRONLY, 0644)
+	var fd string
+	flag.StringVar(&fd, "off-delay", "0s", "delay duration before turning off")
+	flag.StringVar(&ctrldev, "dev", DefaultAmpControlDev, "device to send amp control commands to")
+	flag.StringVar(&alsaprocpath, "alsa-proc", DefaultALSAStatus, "/proc path to ALSA status file")
+	flag.Parse()
+
+	var perr error
+	offdelay, perr = time.ParseDuration(fd)
+	if perr != nil {
+		log.Fatalf("Failed to parse delay duration: %q", perr)
+	}
+
+	ampDev, err := os.OpenFile(ctrldev, os.O_WRONLY, 0644)
 	if err != nil {
 		log.Fatal("Failed to open AMP control device: ", err)
 	}
@@ -52,6 +71,19 @@ func main() {
 			case EventPlaying:
 				state = startAmp(state, ampDev)
 			case EventClosed:
+				if state != StatePlaying {
+					continue
+				}
+				state = StateClosed
+				go func() {
+					log.Printf("Closed. Waiting %s ...", offdelay.String())
+					time.Sleep(offdelay)
+					if state == StatePlaying {
+						return
+					}
+					evch <- EventStopped
+				}()
+			case EventStopped:
 				state = stopAmp(state, ampDev)
 			}
 		}
@@ -59,7 +91,7 @@ func main() {
 }
 
 func readPlayState(ch PlayChannel) {
-	as, err := os.ReadFile(DefaultALSAStatusDev)
+	as, err := os.ReadFile(alsaprocpath)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -72,7 +104,7 @@ func readPlayState(ch PlayChannel) {
 }
 
 func stopAmp(s PlayState, f *os.File) PlayState {
-	if s != StatePlaying {
+	if s == StateStopped {
 		return s
 	}
 	i, err := f.Write([]byte{'0'})
@@ -88,7 +120,7 @@ func stopAmp(s PlayState, f *os.File) PlayState {
 }
 
 func startAmp(s PlayState, f *os.File) PlayState {
-	if s != StateStopped {
+	if s == StatePlaying {
 		return s
 	}
 	i, err := f.Write([]byte{'1'})
