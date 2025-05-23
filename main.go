@@ -98,7 +98,7 @@ func readPlayState(ch PlayChannel) {
 }
 
 func stopAmp(s PlayState, f *os.File) PlayState {
-	if s != StatePlaying {
+	if s == StateStopped {
 		return s
 	}
 	i, err := f.Write([]byte{'0'})
@@ -114,7 +114,7 @@ func stopAmp(s PlayState, f *os.File) PlayState {
 }
 
 func startAmp(s PlayState, f *os.File) PlayState {
-	if s != StateStopped {
+	if s == StatePlaying {
 		return s
 	}
 	i, err := f.Write([]byte{'1'})
