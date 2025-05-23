@@ -26,16 +26,19 @@ const (
 	StateClosed
 )
 
-var offdelay int64
+var offdelay time.Duration
 var ctrldev string
 var alsaprocpath string
 
 func main() {
 	var state = StateStopped
 
-	flag.Int64Var(&offdelay, "off-delay", 0, "delay in seconds before turning off")
 	flag.StringVar(&ctrldev, "dev", DefaultAmpControlDev, "device to send amp control commands to")
 	flag.StringVar(&alsaprocpath, "alsa-proc", DefaultALSAStatus, "/proc path to ALSA status file")
+	offdelay, err := time.ParseDuration(*flag.String("off-delay", "0", "delay duration before turning off"))
+	if err != nil {
+		log.Fatalf("Failed to parse delay duration: %q", err)
+	}
 
 	flag.Parse()
 
@@ -70,8 +73,8 @@ func main() {
 				}
 				state = StateClosed
 				go func() {
-					log.Printf("Closed. Waiting %d ms...", offdelay)
-					time.Sleep(time.Second * time.Duration(offdelay))
+					log.Printf("Closed. Waiting %s ...", offdelay.String())
+					time.Sleep(offdelay)
 					if state == StatePlaying {
 						return
 					}
