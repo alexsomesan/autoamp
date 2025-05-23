@@ -4,7 +4,7 @@ Description="Turn amplifier ON or OFF when sound is playing"
 [Service]
 Type=simple
 Restart=always
-ExecStart=/usr/local/bin/autoamp
+ExecStart=/usr/local/bin/autoamp -dev /dev/ttyACM0
 
 [Install]
 WantedBy=multi-user.target

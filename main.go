@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"log"
 	"os"
 	"strings"
@@ -13,20 +14,32 @@ type PlayChannel chan PlayEvent
 
 const (
 	DefaultAmpControlDev = "/dev/ampcontrol"
-	DefaultALSAStatusDev = "/proc/asound/card1/pcm0p/sub0/status"
+	DefaultALSAStatus    = "/proc/asound/card1/pcm0p/sub0/status"
 	DefaultTickMs        = 333
 
-	EventPlaying PlayEvent = iota
+	EventStopped PlayEvent = iota
+	EventPlaying
 	EventClosed
 
 	StateStopped PlayState = iota
 	StatePlaying
+	StateClosed
 )
+
+var offdelay int64
+var ctrldev string
+var alsaprocpath string
 
 func main() {
 	var state = StateStopped
 
-	ampDev, err := os.OpenFile(DefaultAmpControlDev, os.O_WRONLY, 0644)
+	flag.Int64Var(&offdelay, "off-delay", 0, "delay in ms before turning off")
+	flag.StringVar(&ctrldev, "dev", DefaultAmpControlDev, "device to send amp control commands to")
+	flag.StringVar(&alsaprocpath, "alsa-proc", DefaultALSAStatus, "/proc path to ALSA status file")
+
+	flag.Parse()
+
+	ampDev, err := os.OpenFile(ctrldev, os.O_WRONLY, 0644)
 	if err != nil {
 		log.Fatal("Failed to open AMP control device: ", err)
 	}
@@ -52,6 +65,14 @@ func main() {
 			case EventPlaying:
 				state = startAmp(state, ampDev)
 			case EventClosed:
+				go func() {
+					time.Sleep(time.Millisecond * time.Duration(offdelay))
+					if state == StatePlaying {
+						return
+					}
+					evch <- EventStopped
+				}()
+			case EventStopped:
 				state = stopAmp(state, ampDev)
 			}
 		}
@@ -59,7 +80,7 @@ func main() {
 }
 
 func readPlayState(ch PlayChannel) {
-	as, err := os.ReadFile(DefaultALSAStatusDev)
+	as, err := os.ReadFile(alsaprocpath)
 	if err != nil {
 		log.Fatal(err)
 	}
