@@ -33,7 +33,7 @@ var alsaprocpath string
 func main() {
 	var state = StateStopped
 
-	flag.Int64Var(&offdelay, "off-delay", 0, "delay in ms before turning off")
+	flag.Int64Var(&offdelay, "off-delay", 0, "delay in seconds before turning off")
 	flag.StringVar(&ctrldev, "dev", DefaultAmpControlDev, "device to send amp control commands to")
 	flag.StringVar(&alsaprocpath, "alsa-proc", DefaultALSAStatus, "/proc path to ALSA status file")
 
@@ -71,7 +71,7 @@ func main() {
 				state = StateClosed
 				go func() {
 					log.Printf("Closed. Waiting %d ms...", offdelay)
-					time.Sleep(time.Millisecond * time.Duration(offdelay))
+					time.Sleep(time.Second * time.Duration(offdelay))
 					if state == StatePlaying {
 						return
 					}
